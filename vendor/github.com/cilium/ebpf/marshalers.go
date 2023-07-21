@@ -57,8 +57,10 @@ func marshalBytes(data interface{}, length int) (buf []byte, err error) {
 	case Map, *Map, Program, *Program:
 		err = fmt.Errorf("can't marshal %T", value)
 	default:
-		var wr bytes.Buffer
-		err = binary.Write(&wr, internal.NativeEndian, value)
+		wr := internal.NewBuffer(make([]byte, 0, length))
+		defer internal.PutBuffer(wr)
+
+		err = binary.Write(wr, internal.NativeEndian, value)
 		if err != nil {
 			err = fmt.Errorf("encoding %T: %v", value, err)
 		}
@@ -99,14 +101,7 @@ var bytesReaderPool = sync.Pool{
 func unmarshalBytes(data interface{}, buf []byte) error {
 	switch value := data.(type) {
 	case unsafe.Pointer:
-		var dst []byte
-		// Use unsafe.Slice when we drop support for pre1.17 (https://github.com/golang/go/issues/19367)
-		// We could opt for removing unsafe.Pointer support in the lib as well
-		sh := (*reflect.SliceHeader)(unsafe.Pointer(&dst))
-		sh.Data = uintptr(value)
-		sh.Len = len(buf)
-		sh.Cap = len(buf)
-
+		dst := unsafe.Slice((*byte)(value), len(buf))
 		copy(dst, buf)
 		runtime.KeepAlive(value)
 		return nil

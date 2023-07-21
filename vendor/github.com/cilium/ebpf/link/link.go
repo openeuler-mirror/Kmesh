@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/internal"
-	"github.com/cilium/ebpf/internal/btf"
 	"github.com/cilium/ebpf/internal/sys"
 )
 
@@ -46,6 +46,18 @@ type Link interface {
 	isLink()
 }
 
+// NewLinkFromFD creates a link from a raw fd.
+//
+// You should not use fd after calling this function.
+func NewLinkFromFD(fd int) (Link, error) {
+	sysFD, err := sys.NewFD(fd)
+	if err != nil {
+		return nil, err
+	}
+
+	return wrapRawLink(&RawLink{fd: sysFD})
+}
+
 // LoadPinnedLink loads a link that was persisted into a bpffs.
 func LoadPinnedLink(fileName string, opts *ebpf.LoadPinOptions) (Link, error) {
 	raw, err := loadPinnedRawLink(fileName, opts)
@@ -59,10 +71,15 @@ func LoadPinnedLink(fileName string, opts *ebpf.LoadPinOptions) (Link, error) {
 // wrap a RawLink in a more specific type if possible.
 //
 // The function takes ownership of raw and closes it on error.
-func wrapRawLink(raw *RawLink) (Link, error) {
+func wrapRawLink(raw *RawLink) (_ Link, err error) {
+	defer func() {
+		if err != nil {
+			raw.Close()
+		}
+	}()
+
 	info, err := raw.Info()
 	if err != nil {
-		raw.Close()
 		return nil, err
 	}
 
@@ -77,6 +94,10 @@ func wrapRawLink(raw *RawLink) (Link, error) {
 		return &Iter{*raw}, nil
 	case NetNsType:
 		return &NetNsLink{*raw}, nil
+	case KprobeMultiType:
+		return &kprobeMultiLink{*raw}, nil
+	case PerfEventType:
+		return nil, fmt.Errorf("recovering perf event fd: %w", ErrNotSupported)
 	default:
 		return raw, nil
 	}
@@ -106,11 +127,6 @@ type Info struct {
 	Program ebpf.ProgramID
 	extra   interface{}
 }
-
-// RawLinkInfo contains information on a raw link.
-//
-// Deprecated: use Info instead.
-type RawLinkInfo = Info
 
 type TracingInfo sys.TracingLinkInfo
 type CgroupInfo sys.CgroupLinkInfo
@@ -177,45 +193,15 @@ func AttachRawLink(opts RawLinkOptions) (*RawLink, error) {
 		TargetFd:    uint32(opts.Target),
 		ProgFd:      uint32(progFd),
 		AttachType:  sys.AttachType(opts.Attach),
-		TargetBtfId: uint32(opts.BTF),
+		TargetBtfId: opts.BTF,
 		Flags:       opts.Flags,
 	}
 	fd, err := sys.LinkCreate(&attr)
 	if err != nil {
-		return nil, fmt.Errorf("can't create link: %s", err)
+		return nil, fmt.Errorf("create link: %w", err)
 	}
 
 	return &RawLink{fd, ""}, nil
-}
-
-// LoadPinnedRawLink loads a persisted link from a bpffs.
-//
-// Returns an error if the pinned link type doesn't match linkType. Pass
-// UnspecifiedType to disable this behaviour.
-//
-// Deprecated: use LoadPinnedLink instead.
-func LoadPinnedRawLink(fileName string, linkType Type, opts *ebpf.LoadPinOptions) (*RawLink, error) {
-	link, err := loadPinnedRawLink(fileName, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	if linkType == UnspecifiedType {
-		return link, nil
-	}
-
-	info, err := link.Info()
-	if err != nil {
-		link.Close()
-		return nil, fmt.Errorf("get pinned link info: %w", err)
-	}
-
-	if info.Type != linkType {
-		link.Close()
-		return nil, fmt.Errorf("link type %v doesn't match %v", info.Type, linkType)
-	}
-
-	return link, nil
 }
 
 func loadPinnedRawLink(fileName string, opts *ebpf.LoadPinOptions) (*RawLink, error) {
@@ -263,6 +249,11 @@ func (l *RawLink) Unpin() error {
 	}
 	l.pinnedPath = ""
 	return nil
+}
+
+// IsPinned returns true if the Link has a non-empty pinned path.
+func (l *RawLink) IsPinned() bool {
+	return l.pinnedPath != ""
 }
 
 // Update implements the Link interface.
@@ -315,25 +306,24 @@ func (l *RawLink) Info() (*Info, error) {
 	switch info.Type {
 	case CgroupType:
 		extra = &CgroupInfo{}
-	case IterType:
-		// not supported
 	case NetNsType:
 		extra = &NetNsInfo{}
-	case RawTracepointType:
-		// not supported
 	case TracingType:
 		extra = &TracingInfo{}
 	case XDPType:
 		extra = &XDPInfo{}
+	case RawTracepointType, IterType,
+		PerfEventType, KprobeMultiType:
+		// Extra metadata not supported.
 	default:
 		return nil, fmt.Errorf("unknown link info type: %d", info.Type)
 	}
 
-	if info.Type != RawTracepointType && info.Type != IterType {
+	if extra != nil {
 		buf := bytes.NewReader(info.Extra[:])
 		err := binary.Read(buf, internal.NativeEndian, extra)
 		if err != nil {
-			return nil, fmt.Errorf("can not read extra link info: %w", err)
+			return nil, fmt.Errorf("cannot read extra link info: %w", err)
 		}
 	}
 
