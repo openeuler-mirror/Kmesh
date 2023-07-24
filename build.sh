@@ -24,6 +24,11 @@ function install() {
     cp $ROOT_DIR/build/kmesh-stop-post.sh /usr/bin
     chmod 550 /usr/bin/kmesh-stop-post.sh
 
+    mkdir -p /etc/oncn-mda
+    chmod 700 /etc/oncn-mda
+    cp $ROOT_DIR/oncn-mda/etc/oncn-mda.conf /etc/oncn-mda/
+    chmod 600 /etc/oncn-mda/oncn-mda.conf
+
     cp $ROOT_DIR/build/kmesh.service /usr/lib/systemd/system/
     systemctl daemon-reload
 }
@@ -32,6 +37,8 @@ function uninstall() {
     rm -rf /etc/kmesh
     rm -rf /usr/bin/kmesh-start-pre.sh
     rm -rf /usr/bin/kmesh-stop-post.sh
+    rm -rf /etc/oncn-mda
+    rm -rf /usr/share/oncn-mda
     rm -rf /usr/lib/systemd/system/kmesh.service
     systemctl daemon-reload
 }
