@@ -118,7 +118,10 @@ int route_config_manager(ctx_buff_t *ctx)
 
 	ctx_key.address = addr;
 	ctx_key.tail_call_index = KMESH_TAIL_CALL_CLUSTER + bpf_get_current_task();
-	if (!bpf_strncpy(ctx_val_1.data, BPF_DATA_MAX_LEN, cluster)) {
+	struct bpf_mem_ptr data_tmp = {
+		.ptr = ctx_val_1.data
+	};
+	if (!bpf__strncpy(&data_tmp, sizeof(struct bpf_mem_ptr), cluster, BPF_DATA_MAX_LEN)) {
 		BPF_LOG(ERR, ROUTER_CONFIG, "failed to copy cluster %s\n", cluster);
 		return convert_sockops_ret(-1);
 	}

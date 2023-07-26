@@ -35,6 +35,11 @@ enum kmesh_l7_msg_type {
 #define SET_RET_MSG_TYPE(n, type) (n) = (((n) & 0xff) | (((u32)(type) & 0xff) << KMESH_PROTO_TYPE_WIDTH))
 #define GET_RET_MSG_TYPE(n) (((n) >> KMESH_PROTO_TYPE_WIDTH) & 0xff)
 
+struct bpf_mem_ptr {
+        void *ptr;
+        __u32 size;
+};
+
 struct kmesh_data_node {
 	struct rb_node node;
 	char *keystring;
@@ -61,6 +66,8 @@ void kmesh_protocol_data_clean_allcpu(void);
 
 int __init proto_common_init(void);
 void __exit proto_common_exit(void);
+u32 parse_protocol_impl(struct bpf_mem_ptr *msg);
+struct bpf_mem_ptr *get_protocol_element_impl(char *key);
 
 #endif /* KMESH_PARSE_PROTOCOL_DATA */
 

@@ -124,8 +124,7 @@ extern bpf_parse_protocol_func parse_protocol_func;
 typedef struct bpf_mem_ptr* (*bpf_get_protocol_element_func)(char *key);
 extern bpf_get_protocol_element_func get_protocol_element_func;
 
-static u32
-parse_protocol_impl(struct bpf_mem_ptr* msg)
+u32 parse_protocol_impl(struct bpf_mem_ptr* msg)
 {
 	u32 ret;
 	struct msg_protocol *cur;
@@ -140,7 +139,7 @@ parse_protocol_impl(struct bpf_mem_ptr* msg)
 	return ret;
 }
 
-static struct bpf_mem_ptr* get_protocol_element_impl(char *key)
+struct bpf_mem_ptr* get_protocol_element_impl(char *key)
 {
 	struct kmesh_data_node *data = kmesh_protocol_data_search(key);
 	if (!data)
@@ -150,8 +149,6 @@ static struct bpf_mem_ptr* get_protocol_element_impl(char *key)
 
 int __init proto_common_init(void)
 {
-	parse_protocol_func = parse_protocol_impl;
-	get_protocol_element_func = get_protocol_element_impl;
 	/* add protocol list */
 	g_kmesh_data_root = alloc_percpu(struct rb_root);
 	if (!g_kmesh_data_root)
@@ -162,8 +159,7 @@ int __init proto_common_init(void)
 
 void __exit proto_common_exit(void)
 {
-	parse_protocol_func = NULL;
-	get_protocol_element_func = NULL;
 	kmesh_protocol_data_clean_allcpu();
 	free_percpu(g_kmesh_data_root);
 }
+

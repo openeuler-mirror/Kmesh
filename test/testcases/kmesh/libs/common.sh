@@ -35,7 +35,7 @@ function start_fortio_server()
 function start_kmesh()
 {
     kmesh-daemon -enable-kmesh=true -enable-ads=false -config-file $CURRENT_PATH/conf/test_conf.json > tmp_kmesh_daemon.log &
-    sleep 3
+    sleep 4
     
     grep "command StartServer successful" tmp_kmesh_daemon.log
     CHECK_RESULT $? 0 0 "kmesh-daemon start failed"
@@ -78,6 +78,7 @@ function cleanup()
     rm -rf tmp*.log
     pkill fortio
     pkill kmesh-daemon
+    sleep 1
     rmmod kmesh
     yum remove -y fortio
 }

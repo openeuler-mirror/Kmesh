@@ -65,6 +65,10 @@ static inline int virtual_host_match_check(Route__VirtualHost *virt_host,
 	if (!domains)
 		return 0;
 
+	struct bpf_mem_ptr msg_tmp= {
+		.ptr = ptr,
+	};
+
 	for (i = 0; i < KMESH_HTTP_DOMAIN_NUM; i++) {
 		if (i >= virt_host->n_domains) {
 			break;
@@ -77,7 +81,7 @@ static inline int virtual_host_match_check(Route__VirtualHost *virt_host,
 		if (((char *)domain)[0] == '*' && ((char *)domain)[1] == '\0')
 			return 1;
 
-		if (bpf_strnstr(ptr, domain, ptr_length) != NULL) {
+		if (bpf__strnstr(&msg_tmp, sizeof(struct bpf_mem_ptr), domain, ptr_length) != NULL) {
 			BPF_LOG(DEBUG, ROUTER_CONFIG, "match virtual_host, name=\"%s\"\n",
 				(char *)kmesh_get_ptr_val(virt_host->name));
 			return 1;
@@ -89,7 +93,10 @@ static inline int virtual_host_match_check(Route__VirtualHost *virt_host,
 
 static inline bool VirtualHost_check_allow_any(char *name) {
 	char allow_any[10] = {'a', 'l', 'l', 'o', 'w', '_','a', 'n', 'y', '\0'};
-	if (name && bpf_strncmp(allow_any, 10, name) == 0) {
+	struct bpf_mem_ptr name_tmp = {
+		.ptr = name
+	};
+	if (name && bpf__strncmp(allow_any, 10, &name_tmp, sizeof(struct bpf_mem_ptr)) == 0) {
 		return true;
 	 }
 	return false;
@@ -148,12 +155,15 @@ static inline Route__VirtualHost *virtual_host_match(Route__RouteConfiguration *
 
 static inline bool check_header_value_match(char *target, struct bpf_mem_ptr* head, bool exact) {
 	BPF_LOG(DEBUG, ROUTER_CONFIG, "header match, is exact:%d value:%s\n", exact,target);
-	long target_length = bpf_strnlen(target, BPF_DATA_MAX_LEN);
+	long target_length = bpf__strnlen(target, BPF_DATA_MAX_LEN);
+	struct bpf_mem_ptr head_tmp = {
+		.ptr = _(head->ptr)
+	};
 	if (!exact)
-		return (bpf_strncmp(target, target_length, _(head->ptr)) == 0);
+		return (bpf__strncmp(target, target_length, &head_tmp, sizeof(struct bpf_mem_ptr)) == 0);
 	if (target_length != _(head->size))
 		return false;
-	return (bpf_strncmp(target, target_length, _(head->ptr)) == 0);
+	return (bpf__strncmp(target, target_length, &head_tmp, sizeof(struct bpf_mem_ptr)) == 0);
 }
 
 static inline bool check_headers_match(Route__RouteMatch *match) {
@@ -246,7 +256,10 @@ static inline int virtual_host_route_match_check(Route__Route *route,
 	if (!prefix)
 		return 0;
 
-	if (bpf_strnstr(ptr, prefix, BPF_DATA_MAX_LEN) == NULL)
+	struct bpf_mem_ptr msg_tmp = {
+		.ptr = ptr,
+	};
+	if (bpf__strnstr(&msg_tmp, sizeof(struct bpf_mem_ptr), prefix, BPF_DATA_MAX_LEN) == NULL)
 		return 0;
 
 	if (!check_headers_match(match))

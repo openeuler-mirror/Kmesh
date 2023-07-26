@@ -52,10 +52,13 @@ static inline bool listener_filter_chain_match_check(const Listener__FilterChain
 		return false;
 
 	transport_protocol = kmesh_get_ptr_val(filter_chain_match->transport_protocol);
+	struct bpf_mem_ptr protocol_tmp = {
+		.ptr = transport_protocol
+	};
 	if (!transport_protocol) {
 		BPF_LOG(WARN, LISTENER, "transport_protocol is NULL\n");
 		return false;
-	} else if (transport_protocol[0] != '\0' && bpf_strncmp(buf, sizeof(buf), transport_protocol) != 0) {
+	} else if (transport_protocol[0] != '\0' && bpf__strncmp(buf, sizeof(buf), &protocol_tmp, sizeof(struct bpf_mem_ptr)) != 0) {
 		BPF_LOG(WARN, LISTENER, "transport_protocol %s mismatch\n", transport_protocol);
 		return false;
 	}

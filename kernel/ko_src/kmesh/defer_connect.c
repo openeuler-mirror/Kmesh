@@ -12,6 +12,7 @@
 #include <net/protocol.h>
 #include <net/tcp.h>
 #include <net/udp.h>
+#include "kmesh_parse_protocol_data.h"
 
 static struct proto *kmesh_defer_proto = NULL;
 #define KMESH_DELAY_ERROR -1000
@@ -32,7 +33,7 @@ static int defer_connect(struct sock *sk, struct msghdr *msg, size_t size)
 		ubase = iov->iov_base;
 		kbuf_size = iov->iov_len;
 	} else if (iter_is_iovec(&msg->msg_iter)) {
-		iov = msg->msg_iter.iov;
+		iov = msg->msg_iter.__iov;
 		ubase = iov->iov_base;
 		kbuf_size = iov->iov_len;
 	} else if (iter_is_ubuf(&msg->msg_iter)){
