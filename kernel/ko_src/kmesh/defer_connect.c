@@ -6,6 +6,7 @@
 #include <linux/types.h>
 #include <linux/socket.h>
 #include <linux/netdevice.h>
+#include <linux/bpf.h>
 #include <net/sock.h>
 #include <net/inet_common.h>
 #include <net/inet_connection_sock.h>
@@ -24,8 +25,13 @@ static int defer_connect(struct sock *sk, struct msghdr *msg, size_t size)
 	struct sockaddr_in addr_in;
 	long timeo = 1;
 	const struct iovec *iov;
+	struct bpf_sock_ops_kern sock_ops;
 	void __user *ubase;
 	int err;
+	u32 dport, daddr;
+
+	dport = sk->sk_dport;
+	daddr = sk->sk_daddr;
 
 	if (iov_iter_is_kvec(&msg->msg_iter)) {
 		iov = (struct iovec *)msg->msg_iter.kvec;
@@ -52,14 +58,27 @@ static int defer_connect(struct sock *sk, struct msghdr *msg, size_t size)
 	tmpMem.size = kbuf_size;
 	tmpMem.ptr = kbuf;
 
-	tcp_call_bpf_3arg(sk, BPF_SOCK_OPS_TCP_DEFER_CONNECT_CB,
-						((u64)(&tmpMem) & 0xffffffff),
-						(((u64)(&tmpMem) >> 32) & 0xffffffff), kbuf_size);
+	memset(&sock_ops, 0, offsetof(struct bpf_sock_ops_kern, temp));
+	if (sk_fullsock(sk)) {
+		sock_ops.is_fullsock = 1;
+		sock_owned_by_me(sk);
+	}
+	sock_ops.sk = sk;
+	sock_ops.op = BPF_SOCK_OPS_TCP_DEFER_CONNECT_CB;
+	sock_ops.args[0] = ((u64)(&tmpMem) & 0xffffffff);
+	sock_ops.args[1] = (((u64)(&tmpMem) >> 32) & 0xffffffff);
+
+	(void)BPF_CGROUP_RUN_PROG_SOCK_OPS(&sock_ops);
+	if (sock_ops.replylong[2] && sock_ops.replylong[3]) {
+		daddr = sock_ops.replylong[2];
+		dport = sock_ops.replylong[3];
+	}
+		
 
 connect:
 	addr_in.sin_family = AF_INET;
-	addr_in.sin_port = sk->sk_dport;
-	addr_in.sin_addr.s_addr = sk->sk_daddr;
+	addr_in.sin_port = dport;
+	addr_in.sin_addr.s_addr = daddr;
 	err = sk->sk_prot->connect(sk, (struct sockaddr *)&addr_in, sizeof(struct sockaddr_in));
 	inet_sk(sk)->bpf_defer_connect = 0;
 	if (unlikely(err)) {
