@@ -36,7 +36,10 @@ static inline int handle_http_connection_manager(
 		return -1;
 	}
 
-	if (!bpf_strncpy(ctx_val.data, BPF_DATA_MAX_LEN, route_name)) {
+	struct bpf_mem_ptr data_tmp = {
+		.ptr = ctx_val.data
+	};
+	if (!bpf__strncpy(&data_tmp, sizeof(struct bpf_mem_ptr), route_name, BPF_DATA_MAX_LEN)) {
 		BPF_LOG(ERR, FILTER, "http conn: route name(%s) copy failed:%d\n", route_name, ret);
 		return -1;
 	}

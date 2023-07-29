@@ -24,6 +24,17 @@
 #include "config.h"
 #include "core/address.pb-c.h"
 
+struct bpf_mem_ptr {
+	void *ptr;
+	__u32 size;
+};
+
+extern int bpf__strnlen(const char *src, int size) __ksym;
+extern struct bpf_mem_ptr * bpf__strnstr(void *dst, int dst__sz, const char *src, int len) __ksym;
+extern struct bpf_mem_ptr * bpf__strncpy(void *dst, int dst__sz, const char *src, int len) __ksym;
+extern int bpf__strncmp(const char *dst, int len, void *src, int src__sz) __ksym;
+extern __u32 bpf_parse_header_msg(void *src, int src__sz) __ksym;
+extern struct bpf_mem_ptr *bpf_get_msg_header_element(const char *src) __ksym;
 
 #define BPF_LOGTYPE_LISTENER		BPF_DEBUG_OFF
 #define BPF_LOGTYPE_FILTERCHAIN	 	BPF_DEBUG_OFF
