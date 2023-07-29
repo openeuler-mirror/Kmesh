@@ -81,8 +81,8 @@ typedef struct bpf_sock_ops		ctx_buff_t;
 	name.ipv4 = (ctx)->remote_ip4; \
 	name.port = (ctx)->remote_port
 #define SET_CTX_ADDRESS(ctx, address) \
-	(ctx)->remote_ip4  = (address)->ipv4; \
-	(ctx)->remote_port = (address)->port
+	(ctx)->replylong[2]  = (address)->ipv4; \
+	(ctx)->replylong[3] = (address)->port
 #else
 typedef struct bpf_sock_addr	ctx_buff_t;
 #define DECLARE_VAR_ADDRESS(ctx, name) \
