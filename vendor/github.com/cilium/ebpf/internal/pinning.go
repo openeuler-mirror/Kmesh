@@ -12,8 +12,6 @@ import (
 )
 
 func Pin(currentPath, newPath string, fd *sys.FD) error {
-	const bpfFSType = 0xcafe4a11
-
 	if newPath == "" {
 		return errors.New("given pinning path cannot be empty")
 	}
@@ -21,10 +19,11 @@ func Pin(currentPath, newPath string, fd *sys.FD) error {
 		return nil
 	}
 
-	var statfs unix.Statfs_t
-	if err := unix.Statfs(filepath.Dir(newPath), &statfs); err != nil {
+	fsType, err := FSType(filepath.Dir(newPath))
+	if err != nil {
 		return err
-	} else if uint64(statfs.Type) != bpfFSType {
+	}
+	if fsType != unix.BPF_FS_MAGIC {
 		return fmt.Errorf("%s is not on a bpf filesystem", newPath)
 	}
 
@@ -39,7 +38,7 @@ func Pin(currentPath, newPath string, fd *sys.FD) error {
 
 	// Renameat2 is used instead of os.Rename to disallow the new path replacing
 	// an existing path.
-	err := unix.Renameat2(unix.AT_FDCWD, currentPath, unix.AT_FDCWD, newPath, unix.RENAME_NOREPLACE)
+	err = unix.Renameat2(unix.AT_FDCWD, currentPath, unix.AT_FDCWD, newPath, unix.RENAME_NOREPLACE)
 	if err == nil {
 		// Object is now moved to the new pinning path.
 		return nil

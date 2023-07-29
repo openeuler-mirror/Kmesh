@@ -12,14 +12,12 @@ import (
 	"strings"
 	"testing"
 
+	qt "github.com/frankban/quicktest"
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestRun(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Not compiling with -short")
-	}
-
+	clangBin := clangBin(t)
 	dir := mustWriteTempFile(t, "test.c", minimalSocketFilter)
 
 	cwd, err := os.Getwd()
@@ -51,14 +49,16 @@ func TestRun(t *testing.T) {
 		}
 	}
 
+	module := currentModule()
+
 	execInModule("go", "mod", "init", "bpf2go-test")
 
 	execInModule("go", "mod", "edit",
 		// Require the module. The version doesn't matter due to the replace
 		// below.
-		fmt.Sprintf("-require=%s@v0.0.0", ebpfModule),
+		fmt.Sprintf("-require=%s@v0.0.0", module),
 		// Replace the module with the current version.
-		fmt.Sprintf("-replace=%s=%s", ebpfModule, modRoot),
+		fmt.Sprintf("-replace=%s=%s", module, modRoot),
 	)
 
 	err = run(io.Discard, "foo", tmpDir, []string{
@@ -109,7 +109,7 @@ func TestDisableStripping(t *testing.T) {
 	dir := mustWriteTempFile(t, "test.c", minimalSocketFilter)
 
 	err := run(io.Discard, "foo", dir, []string{
-		"-cc", "clang-9",
+		"-cc", clangBin(t),
 		"-strip", "binary-that-certainly-doesnt-exist",
 		"-no-strip",
 		"bar",
@@ -232,8 +232,8 @@ func TestConvertGOARCH(t *testing.T) {
 	b2g := bpf2go{
 		pkg:              "test",
 		stdout:           io.Discard,
-		ident:            "test",
-		cc:               clangBin,
+		identStem:        "test",
+		cc:               clangBin(t),
 		disableStripping: true,
 		sourceFile:       tmp + "/test.c",
 		outputDir:        tmp,
@@ -242,4 +242,203 @@ func TestConvertGOARCH(t *testing.T) {
 	if err := b2g.convert(targetByGoArch["amd64"], nil); err != nil {
 		t.Fatal("Can't target GOARCH:", err)
 	}
+}
+
+func TestCTypes(t *testing.T) {
+	var ct cTypes
+	valid := []string{
+		"abcdefghijklmnopqrstuvqxyABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_",
+		"y",
+	}
+	for _, value := range valid {
+		if err := ct.Set(value); err != nil {
+			t.Fatalf("Set returned an error for %q: %s", value, err)
+		}
+	}
+	qt.Assert(t, ct, qt.ContentEquals, cTypes(valid))
+
+	for _, value := range []string{
+		"",
+		" ",
+		" frood",
+		"foo\nbar",
+		".",
+		",",
+		"+",
+		"-",
+	} {
+		ct = nil
+		if err := ct.Set(value); err == nil {
+			t.Fatalf("Set did not return an error for %q", value)
+		}
+	}
+
+	ct = nil
+	qt.Assert(t, ct.Set("foo"), qt.IsNil)
+	qt.Assert(t, ct.Set("foo"), qt.IsNotNil)
+}
+
+func TestParseArgs(t *testing.T) {
+	const (
+		pkg       = "eee"
+		outputDir = "."
+		csource   = "testdata/minimal.c"
+		stem      = "a"
+	)
+
+	t.Run("makebase", func(t *testing.T) {
+		basePath, _ := filepath.Abs("barfoo")
+		args := []string{"-makebase", basePath, stem, csource}
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.makeBase, qt.Equals, basePath)
+	})
+
+	t.Run("makebase from env", func(t *testing.T) {
+		basePath, _ := filepath.Abs("barfoo")
+		args := []string{stem, csource}
+		t.Setenv("BPF2GO_MAKEBASE", basePath)
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.makeBase, qt.Equals, basePath)
+	})
+
+	t.Run("makebase flag overrides env", func(t *testing.T) {
+		basePathFlag, _ := filepath.Abs("barfoo")
+		basePathEnv, _ := filepath.Abs("foobar")
+		args := []string{"-makebase", basePathFlag, stem, csource}
+		t.Setenv("BPF2GO_MAKEBASE", basePathEnv)
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.makeBase, qt.Equals, basePathFlag)
+	})
+
+	t.Run("cc defaults to clang", func(t *testing.T) {
+		args := []string{stem, csource}
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.cc, qt.Equals, "clang")
+	})
+
+	t.Run("cc", func(t *testing.T) {
+		args := []string{"-cc", "barfoo", stem, csource}
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.cc, qt.Equals, "barfoo")
+	})
+
+	t.Run("cc from env", func(t *testing.T) {
+		args := []string{stem, csource}
+		t.Setenv("BPF2GO_CC", "barfoo")
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.cc, qt.Equals, "barfoo")
+	})
+
+	t.Run("cc flag overrides env", func(t *testing.T) {
+		args := []string{"-cc", "barfoo", stem, csource}
+		t.Setenv("BPF2GO_CC", "foobar")
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.cc, qt.Equals, "barfoo")
+	})
+
+	t.Run("strip defaults to llvm-strip", func(t *testing.T) {
+		args := []string{stem, csource}
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.strip, qt.Equals, "llvm-strip")
+	})
+
+	t.Run("strip", func(t *testing.T) {
+		args := []string{"-strip", "barfoo", stem, csource}
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.strip, qt.Equals, "barfoo")
+	})
+
+	t.Run("strip from env", func(t *testing.T) {
+		args := []string{stem, csource}
+		t.Setenv("BPF2GO_STRIP", "barfoo")
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.strip, qt.Equals, "barfoo")
+	})
+
+	t.Run("strip flag overrides env", func(t *testing.T) {
+		args := []string{"-strip", "barfoo", stem, csource}
+		t.Setenv("BPF2GO_STRIP", "foobar")
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.strip, qt.Equals, "barfoo")
+	})
+
+	t.Run("no strip defaults to false", func(t *testing.T) {
+		args := []string{stem, csource}
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.disableStripping, qt.IsFalse)
+	})
+
+	t.Run("no strip", func(t *testing.T) {
+		args := []string{"-no-strip", stem, csource}
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.disableStripping, qt.IsTrue)
+	})
+
+	t.Run("cflags flag", func(t *testing.T) {
+		args := []string{"-cflags", "x y z", stem, csource}
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.cFlags, qt.DeepEquals, []string{"x", "y", "z"})
+	})
+
+	t.Run("cflags multi flag", func(t *testing.T) {
+		args := []string{"-cflags", "x y z", "-cflags", "u v", stem, csource}
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.cFlags, qt.DeepEquals, []string{"u", "v"})
+	})
+
+	t.Run("cflags flag and args", func(t *testing.T) {
+		args := []string{"-cflags", "x y z", "stem", csource, "--", "u", "v"}
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.cFlags, qt.DeepEquals, []string{"x", "y", "z", "u", "v"})
+	})
+
+	t.Run("cflags from env", func(t *testing.T) {
+		args := []string{stem, csource}
+		t.Setenv("BPF2GO_CFLAGS", "x y z")
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.cFlags, qt.DeepEquals, []string{"x", "y", "z"})
+	})
+
+	t.Run("cflags flag overrides env", func(t *testing.T) {
+		args := []string{"-cflags", "u v", stem, csource}
+		t.Setenv("BPF2GO_CFLAGS", "x y z")
+		b2g, err := newB2G(&bytes.Buffer{}, pkg, outputDir, args)
+		qt.Assert(t, err, qt.IsNil)
+		qt.Assert(t, b2g.cFlags, qt.DeepEquals, []string{"u", "v"})
+	})
+}
+
+func clangBin(t *testing.T) string {
+	t.Helper()
+
+	if testing.Short() {
+		t.Skip("Not compiling with -short")
+	}
+
+	// Use a recent clang version for local development, but allow CI to run
+	// against oldest supported clang.
+	clang := "clang-14"
+	if minVersion := os.Getenv("CI_MIN_CLANG_VERSION"); minVersion != "" {
+		clang = fmt.Sprintf("clang-%s", minVersion)
+	}
+
+	t.Log("Testing against", clang)
+	return clang
 }
