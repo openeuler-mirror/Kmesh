@@ -66,6 +66,7 @@ int filter_manager(ctx_buff_t *ctx)
 	Listener__Filter *filter = NULL;
 	Filter__HttpConnectionManager *http_conn = NULL;
 	Filter__TcpProxy *tcp_proxy = NULL;
+	struct bpf_mem_ptr msg_tmp = {0};
 
 	DECLARE_VAR_ADDRESS(ctx, addr);
 	ctx_key.address = addr;
@@ -83,8 +84,16 @@ int filter_manager(ctx_buff_t *ctx)
 	}
 	kmesh_tail_delete_ctx(&ctx_key);
 
+
 	switch (filter->config_type_case) {
 		case LISTENER__FILTER__CONFIG_TYPE_HTTP_CONNECTION_MANAGER:
+			msg_tmp.ptr = _(ctx_val->msg->ptr);
+			msg_tmp.size = _(ctx_val->msg->size);
+			ret = bpf_parse_header_msg(&msg_tmp, sizeof(struct bpf_mem_ptr));
+			if (GET_RET_PROTO_TYPE(ret) != PROTO_HTTP_1_1) {
+				BPF_LOG(DEBUG, FILTER, "http filter manager,only support http1.1 this version");
+				return 0;
+			}
 			http_conn = kmesh_get_ptr_val(filter->http_connection_manager);
 			if (!http_conn) {
 				BPF_LOG(ERR, FILTER, "get http_conn failed\n");
