@@ -29,6 +29,10 @@ struct bpf_mem_ptr {
 	__u32 size;
 };
 
+/* due to the limitations of the kfuncs args, we use void* instead of 
+ * struct bpf_mem_ptr* in the declaration and definition, but when we 
+ * actually use it, we need to pass in struct bpf_mem_ptr* in under 
+ * kfuncs, xxx__sz is len of struct xxx*/
 extern int bpf__strnlen(const char *src, int size) __ksym;
 extern struct bpf_mem_ptr * bpf__strnstr(void *dst, int dst__sz, const char *src, int len) __ksym;
 extern struct bpf_mem_ptr * bpf__strncpy(void *dst, int dst__sz, const char *src, int len) __ksym;
