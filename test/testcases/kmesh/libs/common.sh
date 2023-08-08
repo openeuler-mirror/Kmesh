@@ -35,7 +35,7 @@ function start_fortio_server()
 function start_kmesh()
 {
     kmesh-daemon -enable-kmesh=true -enable-ads=false -config-file $CURRENT_PATH/conf/test_conf.json > tmp_kmesh_daemon.log &
-    sleep 4
+    sleep 5
     
     grep "command StartServer successful" tmp_kmesh_daemon.log
     CHECK_RESULT $? 0 0 "kmesh-daemon start failed"
