@@ -23,7 +23,7 @@ func MapOfBreakCountUpdate(key *core_v2.SocketAddress, value *int) error {
 
 	cKey, err := socketAddressToClang(key) 
 	if err != nil {
-		return fmt.Errorf("MapOfBreakCountLookup %s", err)
+		return fmt.Errorf("map of break count lookup %s", err)
 	}
 	defer socketAddressFreeClang(cKey)
 
@@ -31,7 +31,7 @@ func MapOfBreakCountUpdate(key *core_v2.SocketAddress, value *int) error {
 
 	ret := C.deserial_update_map_of_break_count_elem(unsafe.Pointer(cKey), unsafe.Pointer(&overCount))
 	if ret != 0 {
-		return fmt.Errorf("MapOfBreakCountUpdate deserial_update_map_of_break_count_elem failed")
+		return fmt.Errorf("map of break count update deserial_update_map_of_break_count_elem failed")
 	}
 	return nil
 }
@@ -46,7 +46,7 @@ func MapOfBreakCountDelete(key *core_v2.SocketAddress) error {
 	defer socketAddressFreeClang(cKey)
 	ret := C.deserial_delete_map_of_break_count_elem(unsafe.Pointer(cKey))
 	if ret != 0 {
-		return fmt.Errorf("MapOfBreakCountUpdate deserial_delete_map_of_break_count_elem failed")
+		return fmt.Errorf("map of break count update deserial_delete_map_of_break_count_elem failed")
 	}
 	return nil
 }

@@ -24,7 +24,7 @@ func MapOfBreakUpdate(key string, value *int) error {
 
 	var err error
 
-	log.Debugf("MapOfBreakUpdate [%s], [%d]", key, *value)
+	log.Debugf("map of break update [%s], [%d]", key, *value)
 
 	// Convert Go string to [MaxKeyLength]byte
 	var cKey [MaxKeyLength]byte
@@ -32,7 +32,7 @@ func MapOfBreakUpdate(key string, value *int) error {
 
 	cKeyPtr, err := keyToClang(&cKey)
 	if err != nil {
-		return fmt.Errorf("MapOfBreakLookup %s", err)
+		return fmt.Errorf("map of break lookup %s", err)
 	}
 	defer keyFreeClang(cKeyPtr)
 
@@ -41,7 +41,7 @@ func MapOfBreakUpdate(key string, value *int) error {
 
 	ret := C.deserial_update_map_of_break_elem(unsafe.Pointer(cKeyPtr), unsafe.Pointer(&breakValue))
 	if ret != 0 {
-		return fmt.Errorf("MapOfBreakUpdate deserial_update_map_of_break_elem failed")
+		return fmt.Errorf("map of break update deserial_update_map_of_break_elem failed")
 	}
 	return nil
 }
@@ -51,7 +51,7 @@ func MapOfBreakDelete(key string) error {
 		return fmt.Errorf("key length exceeds maximum allowed length")
 	}
 
-	log.Debugf("MapOfBreakDelete [%s]", key)
+	log.Debugf("map of break delete [%s]", key)
 
 	// Convert Go string to [MaxKeyLength]byte
 	var cKey [MaxKeyLength]byte
@@ -59,13 +59,13 @@ func MapOfBreakDelete(key string) error {
 
 	cKeyPtr, err := keyToClang(&cKey)
 	if err != nil {
-		return fmt.Errorf("MapOfBreakLookup %s", err)
+		return fmt.Errorf("map of break lookup %s", err)
 	}
 	defer keyFreeClang(cKeyPtr)
 
 	ret := C.deserial_delete_map_of_break_elem(unsafe.Pointer(cKeyPtr))
 	if ret != 0 {
-		return fmt.Errorf("MapOfBreakUpdate deserial_delete_map_of_break_elem failed")
+		return fmt.Errorf("map of break update deserial_delete_map_of_break_elem failed")
 	}
 	return nil
 }

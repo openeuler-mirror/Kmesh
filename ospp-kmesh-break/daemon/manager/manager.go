@@ -27,13 +27,14 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+
 	"openeuler.io/mesh/cmd/command"
 	"openeuler.io/mesh/pkg/bpf"
 	"openeuler.io/mesh/pkg/controller"
 	"openeuler.io/mesh/pkg/logger"
 	"openeuler.io/mesh/pkg/options"
 	"openeuler.io/mesh/pkg/pid"
-	core_v2 "openeuler.io/mesh/api/v2/core"
+	"openeuler.io/mesh/api/v2/core"
 )
 
 const (
@@ -79,7 +80,7 @@ func getLimit() (int, error) {
 
 // 重置计数
 func resetCount() error {
-    var nextKey, currentKey core_v2.SocketAddress
+    var nextKey, currentKey SocketAddress
     var zeroValue = 0
 
     for {
@@ -102,7 +103,7 @@ func resetCount() error {
 
 // 检查 ebpf map 中键值对是否存在
 func exists() (bool, error) {
-	var someKey = core_v2.SocketAddress{
+	var someKey = SocketAddress{
 		Protocol: 0,
 		Port: 22,
 		Ipv4: 127,
@@ -112,6 +113,56 @@ func exists() (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func handleTicker() bool {
+	limit, err := getLimit()
+	if err != nil {
+		log.Error("获取限额数失败：", err)
+		return false
+	}
+	done := make(chan struct{})
+	ticker := time.NewTicker(time.Duration(limit) * time.Second)
+	defer ticker.Stop()
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				processTicker()
+			}
+			case <-done:
+            	return
+        	}
+		}
+	}()
+	return true
+}
+
+func processTicker() {
+	if exists, err := exists(); err != nil {
+		log.Error("检查ebpfMap2存在性失败：", err)
+	} else if !exists {
+		createEbpfMap2Entry()
+	}
+	resetMap2Count()
+}
+
+func createEbpfMap2Entry() {
+	var someKey = SocketAddress{
+		Protocol: 0,
+		Port:     22,
+		Ipv4:    127,
+	}
+	initialValue := 0
+	if err := ebpfMap2.Put(&someKey, &initialValue); err != nil {
+		log.Error("创建ebpfMap2失败：", err)
+	}
+}
+
+func resetMap2Count() {
+	if err := resetCount(); err != nil {
+		log.Error("重置ebpfMap2的count变量失败：", err)
+	}
 }
 
 // Execute start daemon manager process
@@ -142,50 +193,11 @@ func Execute() {
 		return
 	}
 	log.Info("controller Start successful")
-	// 初始化 ebpf maps
 	initMaps()
-
-	// 从ebpfMap1中获取限额数
-	limit, err := getLimit()
-	if err != nil {
-		log.Error("获取限额数失败：", err)
+	if !handleTicker() {
 		return
 	}
-
-	// 使用获取的限额数作为定时器的定时时间
 	ticker = time.NewTicker(time.Duration(limit) * time.Second)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				// 定时时间到，处理ebpfMap2
-				exists, err := exists()
-				if err != nil {
-					log.Error("检查ebpfMap2存在性失败：", err)
-					break
-				}
-				if !exists {
-					// 如果ebpfMap2不存在，则新建
-					var someKey = core_v2.SocketAddress{
-						Protocol: 0,
-						Port: 22,
-						Ipv4: 127,
-					}
-					initialValue := 0
-					err = ebpfMap2.Put(&someKey, &initialValue)
-					if err != nil {
-						log.Error("创建ebpfMap2失败：", err)
-						break
-					}
-				}
-				// 将ebpfMap2里的count变量清零
-				err = resetCount()
-				if err != nil {
-					log.Error("重置ebpfMap2的count变量失败：", err)
-				}
-			}
-		}
-	}()
 	if err = command.StartServer(); err != nil {
 		log.Error(err)
 		controller.Stop()
@@ -193,7 +205,6 @@ func Execute() {
 		return
 	}
 	log.Info("command StartServer successful")
-
 	setupCloseHandler()
 	return
 }
@@ -208,6 +219,7 @@ func setupCloseHandler() {
 	bpf.Stop()
 	// 定时器清理
 	ticker.Stop()
+	close(done)
 	fmt.Println("定时器已经清理")
 	log.Warn("signal Notify exit")
 }
