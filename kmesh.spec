@@ -8,11 +8,11 @@ License:       ASL 2.0
 URL:           https://gitee.com/openeuler
 Source0:       %{name}-%{version}.tar.gz
 
-BuildRequires: make
+BuildRequires: make dwarves
 BuildRequires: protobuf protobuf-c protobuf-c-devel
 BuildRequires: golang >= 1.16
 BuildRequires: clang >= 10.0.1 llvm >= 10.0.1
-BuildRequires: libbpf-devel kernel-devel >= 5.10
+BuildRequires: libbpf-devel kernel-devel >= 6.4
 BuildRequires: libboundscheck
 
 Requires: bpftool

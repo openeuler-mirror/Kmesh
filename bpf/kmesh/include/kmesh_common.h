@@ -49,7 +49,7 @@ extern struct bpf_mem_ptr *bpf_get_msg_header_element(const char *src) __ksym;
 #define BPF_LOGTYPE_ROUTER_CONFIG   BPF_DEBUG_OFF
 #define BPF_LOGTYPE_COMMON			BPF_DEBUG_OFF
 
-#define BPF_DATA_MAX_LEN			226 /* this value should be
+#define BPF_DATA_MAX_LEN			220 /* this value should be
 							   small that make compile success */
 #define BPF_INNER_MAP_DATA_LEN	  100
 
