@@ -11,7 +11,7 @@ function prepare() {
 
     export PATH=$PATH:$ROOT_DIR/vendor/google.golang.org/protobuf/cmd/protoc-gen-go/
     cp $ROOT_DIR/depends/include/5.10.0-60.18.0.50.oe2203/bpf_helper_defs_ext.h $ROOT_DIR/bpf/include/
-    cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
+    cp /usr/lib/debug/lib/modules/`uname -r`/vmlinux /usr/lib/modules/`uname -r`/build/
 }
 
 function install() {
