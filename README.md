@@ -130,23 +130,43 @@ total 67M
 
 - 基于容器镜像启动部署
 
-  - 从代码仓中获取[容器镜像](release/Kmesh/docker)并加载到集群
+  - 镜像获取
   
     ```sh
-    [root@dev Kmesh]# docker load -i kmesh-1.0.1.tar
+    [root@dev Kmesh]# docker pull hub.oepkgs.net/oncn/kmesh:v0.3.0
     ```
     
   - 启动Kmesh
-  
-    - 启动Kmesh容器
-  
+
+    - docker方式启动Kmesh
+
+      - 根据需要使用的功能设置启动命令
+
       ```sh
-      [root@dev Kmesh]# docker run -itd --privileged=true -v /mnt:/mnt -v /sys/fs/bpf:/sys/fs/bpf -v /lib/modules:/lib/modules --name kmesh kmesh:1.0.1
+	  # 默认使用kmesh流量编排功能
+      [root@dev Kmesh]# docker run -itd --privileged=true -v /mnt:/mnt -v /sys/fs/bpf:/sys/fs/bpf -v /lib/modules:/lib/modules --name kmesh kmesh:0.3.0
       ```
-  
+
+	  ```
+	  # 选择网格加速功能
+	  [root@dev Kmesh]# docker run -itd --privileged=true -v /mnt:/mnt -v /sys/fs/bpf:/sys/fs/bpf -v /lib/modules:/lib/modules --name kmesh --entrypoint "/bin/sh" kmesh:0.3.0 ./start_kmesh.sh -enable-mda -enable-ads=false
+	  ```
+
     - daemonset方式启动Kmesh
-  
+
+      - 根据需要使用的功能配置yaml文件
+
       ```sh
+	  # 默认使用kmesh流量编排功能
+      [root@dev Kmesh]# kubectl apply -f kmesh.yaml
+      ```
+
+      ```sh
+      # 选择网格加速功能，在kmesh.yaml中将启动参数由-enable-kmesh改为-enable-mda
+      [root@dev Kmesh]# vim kmesh.yaml
+      args: ["./start_kmesh.sh -enable-mda -enable-ads=true"]
+
+      # 启动kmesh服务
       [root@dev Kmesh]# kubectl apply -f kmesh.yaml
       ```
 
@@ -166,12 +186,25 @@ total 67M
 
 - 修改kmesh.service，禁用ads开关
 
+  - 选择kmesh流量编排功能
+
   ```sh
   [root@dev ~]# vim /usr/lib/systemd/system/kmesh.service
   ExecStart=/usr/bin/kmesh-daemon -enable-kmesh -enable-ads=false
   [root@dev ~]# systemctl daemon-reload
-  
-  # service启动
+  ```
+
+  - 选择kmesh网格加速功能
+
+  ```sh
+  [root@dev ~]# vim /usr/lib/systemd/system/kmesh.service
+  ExecStart=/usr/bin/kmesh-daemon -enable-mda -enable-ads=false
+  [root@dev ~]# systemctl daemon-reload
+  ```
+
+- service启动
+
+  ```sh
   [root@dev ~]# systemctl start kmesh.service
   ```
 
