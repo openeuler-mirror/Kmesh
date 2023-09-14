@@ -14,6 +14,7 @@ BuildRequires: golang >= 1.16
 BuildRequires: clang >= 10.0.1 llvm >= 10.0.1
 BuildRequires: libbpf-devel kernel-devel >= 6.4
 BuildRequires: libboundscheck
+BuildRequires: kernel-debuginfo
 
 Requires: bpftool
 Requires: libbpf

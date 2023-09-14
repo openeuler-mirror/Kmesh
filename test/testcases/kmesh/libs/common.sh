@@ -9,7 +9,7 @@ function env_init()
 
     cd $CURRENT_PATH
     cd ../pkg
-    yum localinstall -y fortio-*.rpm
+    yum localinstall -y fortio-*$(arch).rpm
     cd $CURRENT_PATH
 
     insmod /lib/modules/kmesh/kmesh.ko
@@ -35,7 +35,7 @@ function start_fortio_server()
 function start_kmesh()
 {
     kmesh-daemon -enable-kmesh=true -enable-ads=false -config-file $CURRENT_PATH/conf/test_conf.json > tmp_kmesh_daemon.log &
-    sleep 5
+    sleep 8
     
     grep "command StartServer successful" tmp_kmesh_daemon.log
     CHECK_RESULT $? 0 0 "kmesh-daemon start failed"
