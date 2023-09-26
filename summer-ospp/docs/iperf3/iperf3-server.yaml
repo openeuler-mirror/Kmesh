@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iperf3-server-deployment
+  labels:
+    app: iperf3-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iperf3-server
+  template:
+    metadata:
+      labels:
+        app: iperf3-server
+    spec:
+      nodeName: node1
+      containers:
+      - name: iperf3-server
+        imagePullPolicy: IfNotPresent
+        image: networkstatic/iperf3
+        args: ['-s']
+        ports:
+        - containerPort: 5201
+          name: server
+      terminationGracePeriodSeconds: 0
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: iperf3-server
+spec:
+  selector:
+    app: iperf3-server
+  ports:
+  - protocol: TCP
+    port: 5201
+    targetPort: server
+  type: ClusterIP
+  clusterIP: 10.1.64.64

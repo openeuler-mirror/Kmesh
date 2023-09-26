@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qperf-server-deployment
+  namespace: test
+spec:
+  selector:
+    matchLabels:
+      app: qperf-server
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: qperf-server
+    spec:
+      containers:
+      - name: qperf-server
+        imagePullPolicy: IfNotPresent
+        image: pedroperezmsft/qperf
+        # command: ["qperf"]
+        # args: ["-","-D"]
+        ports:
+        - containerPort: 19765
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qperf-server-service
+  namespace: test
+spec:
+  selector:
+    app: qperf-server
+  ports:
+    - protocol: TCP
+      port: 19765
+      targetPort: 19765
+  type: ClusterIP
+  clusterIP: 10.1.64.64

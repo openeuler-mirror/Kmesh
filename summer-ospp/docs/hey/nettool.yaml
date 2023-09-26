@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod2-deployment
+  namespace: test
+spec:
+  selector:
+    matchLabels:
+      app: pod2
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      annotations:
+        "cni.projectcalico.org/ipAddrs": "[\"10.244.166.159\"]"
+      labels:
+        app: pod2
+    spec:
+      nodeName: node1
+      containers:
+      - name: network-tool
+        imagePullPolicy: IfNotPresent
+        image: my/nettool:custom
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pod2-service
+  namespace: test
+spec:
+  selector:
+    app: pod2
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+  clusterIP: 10.1.64.64

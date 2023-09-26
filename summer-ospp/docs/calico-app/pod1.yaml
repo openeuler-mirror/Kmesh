@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod1
+  namespace: test
+  annotations: 
+    "cni.projectcalico.org/ipAddrs": "[\"10.244.219.75\"]"
+spec:
+  nodeName: master  # 将 <master-node-name> 替换为 Master 节点的名称
+  containers:
+    - name: network-multitool
+      image: praqma/network-multitool:latest
+      

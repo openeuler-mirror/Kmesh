@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod3-deployment
+  namespace: test
+spec:
+  selector:
+    matchLabels:
+      app: pod3
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      annotations:
+        "cni.projectcalico.org/ipAddrs": "[\"10.244.166.160\"]"
+      labels:
+        app: pod3
+    spec:
+      nodeName: node1
+      containers:
+      - name: network-tool
+        image: praqma/network-multitool:latest

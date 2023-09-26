@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: qperf
+  namespace: test
+spec:
+  template:
+    spec:
+      nodeName: master
+      containers:
+      - nameName: qperf
+        imagePullPolicy: IfNotPresent
+        image: pedroperezmsft/qperf
+        # command: ["10.1.64.64","-t","10","tcp_lat"]
+        args: ["10.1.64.64","-t","10","tcp_lat"]
+      restartPolicy: Never
+  backoffLimit: 4

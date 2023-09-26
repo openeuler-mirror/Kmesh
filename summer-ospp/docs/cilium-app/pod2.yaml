@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod2-deployment
+  namespace: test
+spec:
+  selector:
+    matchLabels:
+      app: pod2
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: pod2
+    spec:
+      nodeName: node1
+      containers:
+      - name: network-tool
+        image: praqma/network-multitool:latest
