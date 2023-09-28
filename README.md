@@ -1,5 +1,3 @@
-![kmesh-logo](docs/pics/logo/PNG2/kmesh-logo.png)
-
 ### 介绍
 
 Kmesh是一种基于可编程内核实现的高性能网格数据面；提供serviceMesh场景下高性能的服务通信能力。
