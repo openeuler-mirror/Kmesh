@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: netperf
+  namespace: test
+spec:
+  template:
+    spec:
+      nodeName: master
+      containers:
+      - name: netperf
+        imagePullPolicy: IfNotPresent
+        image: networkstatic/netperf
+        command: ["netperf", "-H","10.1.64.64","-p","12865","-l", "10", "-f" ,"g" ,"-c" ,"100" ,"-C" ,"100" ,"-t" ,"TCP_STREAM"]
+      restartPolicy: Never
+  backoffLimit: 4

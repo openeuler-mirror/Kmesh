@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hey
+  namespace: test
+spec:
+  template:
+    spec:
+      nodeName: master
+      containers:
+      - name: hey
+        imagePullPolicy: IfNotPresent
+        image: williamyeh/hey
+        command: ["/hey","-n", "10000","-c","1","http://10.1.64.64:80"]
+      restartPolicy: Never
+  backoffLimit: 2

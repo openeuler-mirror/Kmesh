@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "bpf_helpers.h": "c",
+        "bpf_helper_defs.h": "c",
+        "common.h": "c",
+        "bpf_tracing.h": "c"
+    },
+    "go.alternateTools": {
+		"dlv": "${workspaceFolder}/.vscode/dlv-sudo.sh"
+	},
+    "editor.quickSuggestions": {
+        "strings": true
+    },
+    
+}

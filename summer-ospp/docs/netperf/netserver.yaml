@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netserver-deployment
+  namespace: test
+spec:
+  selector:
+    matchLabels:
+      app: netserver
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: netserver
+    spec:
+      containers:
+      - name: netserver
+        imagePullPolicy: IfNotPresent
+        image: networkstatic/netserver
+        command: ["netserver"]
+        args: ["-4","-D"]
+        ports:
+        - containerPort: 12865
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: netserver-service
+  namespace: test
+spec:
+  selector:
+    app: netserver
+  ports:
+    - protocol: TCP
+      port: 12865
+      targetPort: 12865
+  type: ClusterIP
+  clusterIP: 10.1.64.64

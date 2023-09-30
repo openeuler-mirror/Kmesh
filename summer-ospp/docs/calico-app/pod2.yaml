@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod2-deployment
+  namespace: test
+spec:
+  selector:
+    matchLabels:
+      app: pod2
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      annotations:
+        "cni.projectcalico.org/ipAddrs": "[\"10.244.166.159\"]"
+      labels:
+        app: pod2
+    spec:
+      nodeName: node1
+      containers:
+      - name: network-tool
+        imagePullPolicy: IfNotPresent
+        image: wbitt/network-multitool:latest

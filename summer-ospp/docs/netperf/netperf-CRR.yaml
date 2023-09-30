@@ -1,0 +1,15 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: netperf.crr
+  namespace: test
+spec:
+  template:
+    spec:
+      nodeName: master
+      containers:
+      - name: netperf
+        image: networkstatic/netperf
+        command: ["netperf", "-H","10.244.166.134","-l", "10","-t" ,"TCP_CRR"]
+      restartPolicy: Never
+  backoffLimit: 4

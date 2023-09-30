@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pod2-service
+  namespace: test
+spec:
+  selector:
+    app: pod2
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+  clusterIP: 10.1.64.64

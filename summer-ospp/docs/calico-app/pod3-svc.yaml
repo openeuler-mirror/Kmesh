@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pod3-service
+  namespace: test
+spec:
+  selector:
+    app: pod3
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 30001
+  type: NodePort
+  clusterIP: 10.1.118.186

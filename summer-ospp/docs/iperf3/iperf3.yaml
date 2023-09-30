@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: iperf3-client
+spec:
+  nodeName: master  # 将 <master-node-name> 替换为 Master 节点的名称
+  containers:
+  - name: iperf3-client
+    imagePullPolicy: IfNotPresent
+    image: networkstatic/iperf3
+    command: ['/bin/sh', '-c', 'sleep infinity']
+    # To benchmark manually: kubectl exec iperf3-client -- /bin/sh -c 'iperf3 -c iperf3-server'
