@@ -62,7 +62,7 @@ struct {
 	__uint(map_flags, 0);
 } inner_map SEC(".maps");
 
-#if 1
+/*#if 1
 typedef struct bpf_sock_ops		ctx_buff_t;
 #define DECLARE_VAR_ADDRESS(ctx, name) \
 	address_t name = {0}; \
@@ -83,7 +83,7 @@ typedef struct bpf_sock_addr	ctx_buff_t;
 	(ctx)->user_ip4  = (address)->ipv4; \
 	(ctx)->user_port = (address)->port; \
 	(ctx)->protocol = (address)->protocol
-#endif
+#endif*/
 
 typedef Core__SocketAddress address_t;
 

@@ -70,7 +70,7 @@ static inline char *tcp_proxy_get_cluster(const Filter__TcpProxy *tcpProxy)
 	return (char*)kmesh_get_ptr_val(tcpProxy->cluster);
 }
 
-static inline int tcp_proxy_manager(const Filter__TcpProxy *tcpProxy, ctx_buff_t *ctx)
+static inline int tcp_proxy_manager(const Filter__TcpProxy *tcpProxy, struct ctx_buff_t *ctx)
 {
 	int ret;
 	char *cluster = NULL;

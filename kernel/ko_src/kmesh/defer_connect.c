@@ -123,7 +123,8 @@ static int defer_tcp_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
 
 static int defer_tcp_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 {
-	/* Kmesh is not compatible with defer_connect, so we
+
+/* Kmesh is not compatible with defer_connect, so we
 	 * need to check whether defer_connect is set to 1.
 	 * Kmesh reuses the defer_connect flag to enable the 
 	 * epoll to be triggered normally.

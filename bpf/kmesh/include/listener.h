@@ -37,7 +37,7 @@ static inline Listener__Listener *map_lookup_listener(const address_t *addr)
 
 static inline bool listener_filter_chain_match_check(const Listener__FilterChain *filter_chain,
 						  const address_t *addr,
-						  const ctx_buff_t *ctx)
+						  const struct ctx_buff_t *ctx)
 {
 	char *transport_protocol;
 	const char buf[] = "raw_buffer";
@@ -69,7 +69,7 @@ static inline bool listener_filter_chain_match_check(const Listener__FilterChain
 
 static inline int listener_filter_chain_match(const Listener__Listener *listener,
 					const address_t *addr,
-					const ctx_buff_t *ctx,
+					const struct ctx_buff_t *ctx,
 					Listener__FilterChain **filter_chain_ptr,
 					__u64 *filter_chain_idx)
 {
@@ -107,7 +107,7 @@ static inline int listener_filter_chain_match(const Listener__Listener *listener
 	return -1;
 }
 
-static inline int listener_manager(ctx_buff_t *ctx, Listener__Listener *listener, struct bpf_mem_ptr *msg)
+static inline int listener_manager(struct ctx_buff_t *ctx, Listener__Listener *listener, struct bpf_mem_ptr *msg)
 {
 	int ret = 0;
 	__u64 filter_chain_idx = 0;

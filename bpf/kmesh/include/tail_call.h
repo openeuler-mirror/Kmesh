@@ -44,7 +44,7 @@ struct {
 	__uint(map_flags, 0);
 } map_of_tail_call_prog SEC(".maps");
 
-static inline void kmesh_tail_call(ctx_buff_t *ctx, const __u32 index)
+static inline void kmesh_tail_call(struct ctx_buff_t *ctx, const __u32 index)
 {
 	bpf_tail_call(ctx, &map_of_tail_call_prog, index);
 }
