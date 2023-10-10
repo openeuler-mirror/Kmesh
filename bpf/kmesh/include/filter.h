@@ -123,8 +123,11 @@ static inline int handle_http_connection_manager(
 	kmesh_tail_delete_ctx(&ctx_key);
 	return 0;
 }
-
+#ifdef CGROUP_SOCK_MANAGE
+SEC_TAIL(KMESH_CGROUP_CALLS, KMESH_CGROUP_TAIL_CALL_FILTER)
+#else
 SEC_TAIL(KMESH_SOCKOPS_CALLS, KMESH_TAIL_CALL_FILTER)
+#endif
 int filter_manager(struct ctx_buff_t *ctx)
 {
 	int ret = 0;
@@ -133,10 +136,18 @@ int filter_manager(struct ctx_buff_t *ctx)
 	Listener__Filter *filter = NULL;
 	Filter__HttpConnectionManager *http_conn = NULL;
 	Filter__TcpProxy *tcp_proxy = NULL;
+	tail_call_index_t current_call_index = 0;
 
 	DECLARE_VAR_ADDRESS(ctx, addr);
+
+#ifdef CGROUP_SOCK_MANAGE
+	current_call_index = KMESH_CGROUP_TAIL_CALL_FILTER;
+#else
+	current_call_index = KMESH_TAIL_CALL_FILTER;
+#endif
+
 	ctx_key.address = addr;
-	ctx_key.tail_call_index = KMESH_TAIL_CALL_FILTER + bpf_get_current_task();
+	ctx_key.tail_call_index = current_call_index + bpf_get_current_task();
 	ctx_val = kmesh_tail_lookup_ctx(&ctx_key);
 	if (!ctx_val) {
 		BPF_LOG(ERR, FILTER, "failed to lookup tail call val\n");
@@ -151,6 +162,7 @@ int filter_manager(struct ctx_buff_t *ctx)
 	kmesh_tail_delete_ctx(&ctx_key);
 
 	switch (filter->config_type_case) {
+#ifndef CGROUP_SOCK_MANAGE
 		case LISTENER__FILTER__CONFIG_TYPE_HTTP_CONNECTION_MANAGER:
 			http_conn = kmesh_get_ptr_val(filter->http_connection_manager);
 			ret = bpf_parse_header_msg(ctx_val->msg);
@@ -165,6 +177,7 @@ int filter_manager(struct ctx_buff_t *ctx)
 			}
 			ret = handle_http_connection_manager(http_conn, &addr, ctx, ctx_val->msg);
 			break;
+#endif
 		case LISTENER__FILTER__CONFIG_TYPE_TCP_PROXY:
 			tcp_proxy = kmesh_get_ptr_val(filter->tcp_proxy);
 			if (!tcp_proxy) {
@@ -180,7 +193,11 @@ int filter_manager(struct ctx_buff_t *ctx)
 	return convert_sockops_ret(ret);
 }
 
+#ifdef CGROUP_SOCK_MANAGE
+SEC_TAIL(KMESH_CGROUP_CALLS, KMESH_CGROUP_TAIL_CALL_FILTER_CHAIN)
+#else
 SEC_TAIL(KMESH_SOCKOPS_CALLS, KMESH_TAIL_CALL_FILTER_CHAIN)
+#endif
 int filter_chain_manager(struct ctx_buff_t *ctx)
 {
 	int ret = 0;
@@ -190,11 +207,22 @@ int filter_chain_manager(struct ctx_buff_t *ctx)
 	ctx_val_t *ctx_val_ptr = NULL;
 	Listener__FilterChain *filter_chain = NULL;
 	Listener__Filter *filter = NULL;
+	tail_call_index_t current_call_index = 0;
+	tail_call_index_t next_call_index = 0;
 
 	DECLARE_VAR_ADDRESS(ctx, addr);
 
+
+#ifdef CGROUP_SOCK_MANAGE
+	current_call_index = KMESH_CGROUP_TAIL_CALL_FILTER_CHAIN;
+	next_call_index = KMESH_CGROUP_TAIL_CALL_FILTER;
+#else
+	current_call_index = KMESH_TAIL_CALL_FILTER_CHAIN;
+	next_call_index = KMESH_TAIL_CALL_FILTER;
+#endif
+
 	ctx_key.address = addr;
-	ctx_key.tail_call_index = KMESH_TAIL_CALL_FILTER_CHAIN + bpf_get_current_task();
+	ctx_key.tail_call_index = current_call_index + bpf_get_current_task();
 
 	ctx_val_ptr = kmesh_tail_lookup_ctx(&ctx_key);
 	if (!ctx_val_ptr) {
@@ -218,7 +246,7 @@ int filter_chain_manager(struct ctx_buff_t *ctx)
 	// we should skip back and handle next filter, rather than exit.
 
 	ctx_key.address = addr;
-	ctx_key.tail_call_index = KMESH_TAIL_CALL_FILTER + bpf_get_current_task();
+	ctx_key.tail_call_index = next_call_index + bpf_get_current_task();
 	ctx_val.val = filter_idx;
 	ctx_val.msg = ctx_val_ptr->msg;
 	ret = kmesh_tail_update_ctx(&ctx_key, &ctx_val);
@@ -227,7 +255,7 @@ int filter_chain_manager(struct ctx_buff_t *ctx)
 		return convert_sockops_ret(ret);
 	}
 
-	kmesh_tail_call(ctx, KMESH_TAIL_CALL_FILTER);
+	kmesh_tail_call(ctx, next_call_index);
 	kmesh_tail_delete_ctx(&ctx_key);
 	return 0;
 }

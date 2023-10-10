@@ -77,12 +77,19 @@ static inline int tcp_proxy_manager(const Filter__TcpProxy *tcpProxy, struct ctx
 	DECLARE_VAR_ADDRESS(ctx, addr);
 	ctx_key_t ctx_key = {0};
 	ctx_val_t ctx_val = {0};
+	tail_call_index_t next_call_index = 0;
 
 	if (NULL == tcpProxy)
 		return convert_sock_errno(-EINVAL);
 	cluster = tcp_proxy_get_cluster(tcpProxy);
+
+#ifdef CGROUP_SOCK_MANAGE
+	next_call_index = KMESH_CGROUP_TAIL_CALL_CLUSTER;
+#else
+	next_call_index = KMESH_TAIL_CALL_CLUSTER;
+#endif
 	ctx_key.address = addr;
-	ctx_key.tail_call_index = KMESH_TAIL_CALL_CLUSTER + bpf_get_current_task();
+	ctx_key.tail_call_index = next_call_index + bpf_get_current_task();
 	if (!bpf_strncpy(ctx_val.data, BPF_DATA_MAX_LEN, cluster)) {
 		BPF_LOG(ERR, FILTER, "failed to copy cluster %s\n", cluster);
 		return convert_sock_errno(ret);
@@ -92,7 +99,7 @@ static inline int tcp_proxy_manager(const Filter__TcpProxy *tcpProxy, struct ctx
 	if (ret != 0)
 		return convert_sock_errno(ret);
 	BPF_LOG(DEBUG, FILTER, "tcp_proxy_manager cluster %s\n", cluster);
-	kmesh_tail_call(ctx, KMESH_TAIL_CALL_CLUSTER);
+	kmesh_tail_call(ctx, next_call_index);
 	kmesh_tail_delete_ctx(&ctx_key);
 	return 0;
 }

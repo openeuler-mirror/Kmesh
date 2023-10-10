@@ -114,6 +114,7 @@ static inline int listener_manager(struct ctx_buff_t *ctx, Listener__Listener *l
 	Listener__FilterChain *filter_chain = NULL;
 	ctx_key_t ctx_key = {0};
 	ctx_val_t ctx_val = {0};
+	tail_call_index_t next_call_index = 0;
 
 	DECLARE_VAR_ADDRESS(ctx, addr);
 	/* filter chain match */
@@ -122,10 +123,16 @@ static inline int listener_manager(struct ctx_buff_t *ctx, Listener__Listener *l
 		BPF_LOG(WARN, LISTENER, "filterchain mismatch, un support addr=%u:%u\n", addr.ipv4, addr.port);
 		return -1;
 	}
-	
+
+
 	/* exec filter chain */
+#ifdef CGROUP_SOCK_MANAGE
+	next_call_index = KMESH_CGROUP_TAIL_CALL_FILTER_CHAIN;
+#else
+	next_call_index = KMESH_TAIL_CALL_FILTER_CHAIN;
+#endif
 	ctx_key.address = addr;
-	ctx_key.tail_call_index = KMESH_TAIL_CALL_FILTER_CHAIN + bpf_get_current_task();
+	ctx_key.tail_call_index = next_call_index + bpf_get_current_task();
 	ctx_val.val = filter_chain_idx;
 	ctx_val.msg = msg;
 	ret = kmesh_tail_update_ctx(&ctx_key, &ctx_val);
@@ -134,7 +141,7 @@ static inline int listener_manager(struct ctx_buff_t *ctx, Listener__Listener *l
 		return ret;
 	}
 
-	kmesh_tail_call(ctx, KMESH_TAIL_CALL_FILTER_CHAIN);
+	kmesh_tail_call(ctx, next_call_index);
 	(void)kmesh_tail_delete_ctx(&ctx_key);
 
 	BPF_LOG(ERR, LISTENER, "listener_manager exit\n");

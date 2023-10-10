@@ -54,7 +54,7 @@ static inline int sock4_traffic_control(struct bpf_sock_addr *ctx)
 	if (ret)
 		BPF_LOG(ERR, KMESH, "bpf set sockopt failed! ret:%d\n", ret);
 #else // KMESH_ENABLE_HTTP
-	ret = l4_listener_manager(ctx, lisdemotener);
+	ret = listener_manager(ctx, listener, NULL);
 	if (ret != 0) {
 		BPF_LOG(ERR, KMESH, "listener_manager failed, ret %d\n", ret);
 		return ret;
