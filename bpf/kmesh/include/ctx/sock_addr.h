@@ -19,8 +19,9 @@
 #ifndef __BPF_CTX_SOCK_ADDR_H
 #define __BPF_CTX_SOCK_ADDR_H
 
+typedef struct bpf_sock_addr		ctx_buff_t;
 
-#define ctx_buff_t bpf_sock_addr
+#define KMESH_PORG_CALLS			cgroup/connect4
 
 #define DECLARE_VAR_ADDRESS(ctx, name) \
 	address_t name = {0}; \

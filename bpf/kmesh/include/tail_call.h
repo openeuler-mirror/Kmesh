@@ -21,30 +21,10 @@
 
 #include "kmesh_common.h"
 
+
 // same as linux/bpf.h MAX_TAIL_CALL_CNT
 #define MAP_SIZE_OF_TAIL_CALL_PROG		  32
 #define MAP_SIZE_OF_TAIL_CALL_CTX		   256
-
-/*#ifdef CGROUP_SOCK_MANAGE
-	#define KMESH_PROG_CALLS				 cgroup
-#else
-	#define KMESH_PROG_CALLS				 sockops
-#endif*/
-
-#define KMESH_SOCKOPS_CALLS				 sockops
-#define KMESH_CGROUP_CALLS				 cgroup/connect4
-
-typedef enum {
-	KMESH_TAIL_CALL_LISTENER = 1,
-	KMESH_TAIL_CALL_FILTER_CHAIN,
-	KMESH_TAIL_CALL_FILTER,
-	KMESH_TAIL_CALL_ROUTER,
-	KMESH_TAIL_CALL_CLUSTER,
-	KMESH_TAIL_CALL_ROUTER_CONFIG,
-	KMESH_CGROUP_TAIL_CALL_FILTER_CHAIN,
-	KMESH_CGROUP_TAIL_CALL_FILTER,
-	KMESH_CGROUP_TAIL_CALL_CLUSTER,
-} tail_call_index_t;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
@@ -54,7 +34,7 @@ struct {
 	__uint(map_flags, 0);
 } map_of_tail_call_prog SEC(".maps");
 
-static inline void kmesh_tail_call(struct ctx_buff_t *ctx, const __u32 index)
+static inline void kmesh_tail_call(ctx_buff_t *ctx, const __u32 index)
 {
 	bpf_tail_call(ctx, &map_of_tail_call_prog, index);
 }

@@ -22,7 +22,6 @@
 #include "kmesh_common.h"
 #include "tail_call.h"
 #include "route/route.pb-c.h"
-#include "ctx/ctx.h"
 
 #define ROUTER_NAME_MAX_LEN		BPF_DATA_MAX_LEN
 
@@ -43,7 +42,7 @@ static inline Route__RouteConfiguration *map_lookup_route_config(const char *rou
 }
 
 static inline int virtual_host_match_check(Route__VirtualHost *virt_host,
-											address_t *addr, struct ctx_buff_t *ctx, struct bpf_mem_ptr *uri)
+											address_t *addr, ctx_buff_t *ctx, struct bpf_mem_ptr *uri)
 {
 	int i;
 	void *domains = NULL;
@@ -99,7 +98,7 @@ static inline bool VirtualHost_check_allow_any(char *name) {
 
 static inline Route__VirtualHost *virtual_host_match(Route__RouteConfiguration *route_config,
 					address_t *addr,
-					struct ctx_buff_t *ctx)
+					ctx_buff_t *ctx)
 {
 	int i;
 	void *ptrs = NULL;
@@ -227,7 +226,7 @@ static inline bool check_headers_match(Route__RouteMatch *match) {
 }
 
 static inline int virtual_host_route_match_check(Route__Route *route,
-												address_t *addr, struct ctx_buff_t *ctx, struct bpf_mem_ptr *msg)
+												address_t *addr, ctx_buff_t *ctx, struct bpf_mem_ptr *msg)
 {
 	Route__RouteMatch *match;
 	char *prefix;
@@ -260,7 +259,7 @@ static inline int virtual_host_route_match_check(Route__Route *route,
 }
 
 static inline Route__Route *virtual_host_route_match(Route__VirtualHost *virt_host,
-													address_t *addr, struct ctx_buff_t *ctx, struct bpf_mem_ptr *msg)
+													address_t *addr, ctx_buff_t *ctx, struct bpf_mem_ptr *msg)
 {
 	int i;
 	void *ptrs = NULL;
@@ -344,8 +343,8 @@ static inline char *route_get_cluster(const Route__Route *route)
 	return kmesh_get_ptr_val(_(route_act->cluster));
 }
 
-SEC_TAIL(KMESH_SOCKOPS_CALLS, KMESH_TAIL_CALL_ROUTER_CONFIG)
-int route_config_manager(struct ctx_buff_t *ctx)
+SEC_TAIL(KMESH_PORG_CALLS, KMESH_TAIL_CALL_ROUTER_CONFIG)
+int route_config_manager(ctx_buff_t *ctx)
 {
 	int ret;
 	char *cluster = NULL;

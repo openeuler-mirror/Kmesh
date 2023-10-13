@@ -19,7 +19,7 @@
 package bpf
 
 // #cgo pkg-config: bpf api-v2-c
-// #include "kmesh/include/tail_call.h"
+// #include "kmesh/include/kmesh_common.h"
 import "C"
 import (
 	"os"
@@ -52,8 +52,8 @@ type BpfSockOps struct {
 
 type BpfKmesh struct {
 	TracePoint BpfTracePoint
-	SockConn BpfSockConn
-	SockOps  BpfSockOps
+	SockConn   BpfSockConn
+	SockOps    BpfSockOps
 }
 
 func (sc *BpfTracePoint) NewBpf(cfg *Config) {
@@ -137,7 +137,7 @@ func setInnerMap(spec *ebpf.CollectionSpec) {
 
 func (sc *BpfTracePoint) loadKmeshTracePointObjects() (*ebpf.CollectionSpec, error) {
 	var (
-		err error
+		err  error
 		spec *ebpf.CollectionSpec
 		opts ebpf.CollectionOptions
 	)
@@ -332,6 +332,31 @@ func (sc *BpfSockConn) LoadSockConn() error {
 	sc.Info.Type = prog.Type
 	sc.Info.AttachType = prog.AttachType
 
+	// update tail call prog
+	err = sc.KmeshTailCallProg.Update(
+		uint32(C.KMESH_TAIL_CALL_FILTER_CHAIN),
+		uint32(sc.FilterChainManager.FD()),
+		ebpf.UpdateAny)
+	if err != nil {
+		return err
+	}
+
+	err = sc.KmeshTailCallProg.Update(
+		uint32(C.KMESH_TAIL_CALL_FILTER),
+		uint32(sc.FilterManager.FD()),
+		ebpf.UpdateAny)
+	if err != nil {
+		return err
+	}
+
+	err = sc.KmeshTailCallProg.Update(
+		uint32(C.KMESH_TAIL_CALL_CLUSTER),
+		uint32(sc.ClusterManager.FD()),
+		ebpf.UpdateAny)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -401,7 +426,7 @@ func (sc *BpfKmesh) ApiEnvCfg() error {
 }
 
 func (sc *BpfTracePoint) Attach() error {
-	tpopt := link.RawTracepointOptions {
+	tpopt := link.RawTracepointOptions{
 		Name:    "connect_ret",
 		Program: sc.KmeshTracePointObjects.ConnectRet,
 	}

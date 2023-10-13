@@ -21,7 +21,6 @@
 
 #include "bpf_log.h"
 #include "kmesh_common.h"
-#include "ctx/ctx.h"
 #include "tail_call.h"
 #include "cluster/cluster.pb-c.h"
 #include "endpoint/endpoint.pb-c.h"
@@ -267,7 +266,7 @@ static inline Core__SocketAddress *cluster_get_ep_sock_addr(const void *ep_ident
 	return sock_addr;
 }
 
-static inline int cluster_handle_loadbalance(Cluster__Cluster *cluster, address_t *addr, struct ctx_buff_t *ctx)
+static inline int cluster_handle_loadbalance(Cluster__Cluster *cluster, address_t *addr, ctx_buff_t *ctx)
 {
 	char *name = NULL;
 	void *ep_identity = NULL;
@@ -304,29 +303,18 @@ static inline int cluster_handle_loadbalance(Cluster__Cluster *cluster, address_
 	return 0;
 }
 
-#ifdef CGROUP_SOCK_MANAGE
-SEC_TAIL(KMESH_CGROUP_CALLS, KMESH_CGROUP_TAIL_CALL_CLUSTER)
-#else
-SEC_TAIL(KMESH_SOCKOPS_CALLS, KMESH_TAIL_CALL_CLUSTER)
-#endif
-int cluster_manager(struct ctx_buff_t *ctx)
+SEC_TAIL(KMESH_PORG_CALLS, KMESH_TAIL_CALL_CLUSTER)
+int cluster_manager(ctx_buff_t *ctx)
 {
 	int ret = 0;
 	ctx_key_t ctx_key = {0};
 	ctx_val_t *ctx_val = NULL;
 	Cluster__Cluster *cluster = NULL;
-	tail_call_index_t current_call_index = 0;
 
 	DECLARE_VAR_ADDRESS(ctx, addr);
 
-#ifdef CGROUP_SOCK_MANAGE
-	current_call_index = KMESH_CGROUP_TAIL_CALL_CLUSTER;
-#else
-	current_call_index = KMESH_TAIL_CALL_CLUSTER;
-#endif
-
 	ctx_key.address = addr;
-	ctx_key.tail_call_index = current_call_index + bpf_get_current_task();
+	ctx_key.tail_call_index = KMESH_TAIL_CALL_CLUSTER + bpf_get_current_task();
 
 	ctx_val = kmesh_tail_lookup_ctx(&ctx_key);
 	if (ctx_val == NULL)
