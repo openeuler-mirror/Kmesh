@@ -21,20 +21,10 @@
 
 #include "kmesh_common.h"
 
+
 // same as linux/bpf.h MAX_TAIL_CALL_CNT
 #define MAP_SIZE_OF_TAIL_CALL_PROG		  32
 #define MAP_SIZE_OF_TAIL_CALL_CTX		   256
-
-#define KMESH_SOCKOPS_CALLS				 sockops
-
-typedef enum {
-	KMESH_TAIL_CALL_LISTENER = 1,
-	KMESH_TAIL_CALL_FILTER_CHAIN,
-	KMESH_TAIL_CALL_FILTER,
-	KMESH_TAIL_CALL_ROUTER,
-	KMESH_TAIL_CALL_CLUSTER,
-	KMESH_TAIL_CALL_ROUTER_CONFIG,
-} tail_call_index_t;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
