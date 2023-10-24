@@ -29,6 +29,7 @@
 #define KMESH_ENABLE_HTTP		KMESH_MODULE_OFF
 #define KMESH_ENABLE_HTTPS		KMESH_MODULE_OFF
 
+#define MAP_SIZE_OF_LBCONFIG    1
 #define MAP_SIZE_OF_SERVICE     10240
 #define MAP_SIZE_OF_BACKEND     65536
 #define MAP_SIZE_OF_ENDPOINT    65536
@@ -40,5 +41,6 @@
 #define map_of_loadbalance		slb_loadbalance
 #define map_of_ct			slb_ct
 #define map_of_usedport			slb_usedport
+#define map_of_lbconfig         slb_config
 
 #endif /*_CONFIG_H_*/

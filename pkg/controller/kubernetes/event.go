@@ -320,3 +320,44 @@ func (nd *nodeHandle) batchProcess() {
 
 	nd.isChange = false
 }
+
+type configMapEvent struct {
+	opt cache_v1.CacheOptionFlag
+	obj *api_core_v1.ConfigMap
+}
+
+func newConfigMapEvent(obj interface{}, flag cache_v1.CacheOptionFlag) *configMapEvent {
+	event := &configMapEvent{}
+
+	if obj == nil {
+		return nil
+	}
+	if obj != nil {
+		event.obj = obj.(*api_core_v1.ConfigMap)
+	}
+	event.opt = flag
+
+	return event
+}
+
+type configMapHandler struct {
+	configmap *configMapEvent
+}
+
+func newConfigMapHandler() *configMapHandler {
+	return &configMapHandler{}
+}
+
+func (cm *configMapHandler) process() {
+	if cm.configmap == nil {
+		return
+	}
+
+	lbcache := make(cache_v1.LbconfigCache)
+	defer func() { lbcache = nil }()
+
+	updateLbconfig(lbcache, cm.configmap)
+
+	lbcache.StatusFlush(cache_v1.CacheFlagUpdate)
+	lbcache.StatusFlush(cache_v1.CacheFlagDelete)
+}

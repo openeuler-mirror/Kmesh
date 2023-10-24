@@ -9,11 +9,16 @@
  * PURPOSE.
  * See the Mulan PSL v2 for more details.
  * Author: bitcoffee
- * Create: 2023-05-12
+ * Create: 2023-08-13
  */
-#include "map/service_map.h"
-#include "map/backend_map.h"
-#include "map/endpoint_map.h"
-#include "map/conntrack_map.h"
-#include "map/usedport_map.h"
-#include "map/lbconfig_map.h"
+package map_api_v1
+
+type LbConfigKey struct {
+	HostAddress uint32
+}
+
+type LbConfigEntry struct {
+	HostAddress uint32
+	SnatPortMin uint32
+	SnatPortMax uint32
+}

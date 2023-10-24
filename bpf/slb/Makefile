@@ -7,4 +7,7 @@ xdp:
 tc:
 	clang -g -O2 -target bpf -c tc.c -Iinclude -I../include -I../../include -D__x86_64__ -DTC_CTX
 
+port:
+	clang -g -O2 -target bpf -c check_port.c -Iinclude -I../include -I../../include
+
 all:tc xdp cgroup

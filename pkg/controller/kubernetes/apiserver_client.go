@@ -33,6 +33,7 @@ import (
 const (
 	InformerTypeService   = "Service"
 	InformerTypeEndpoints = "Endpoints"
+	InformerTypeConfigMap = "ConfigMap"
 	InformerTypeNode      = "Node"
 
 	InformerOptAdd    = "Add"
@@ -47,12 +48,13 @@ const (
 )
 
 type ApiserverClient struct {
-	queue            workqueue.RateLimitingInterface
-	factory          informers.SharedInformerFactory
-	serviceInformer  informers_core_v1.ServiceInformer
-	endpointInformer informers_core_v1.EndpointsInformer
-	nodeInformer     informers_core_v1.NodeInformer
-	svcHandles       map[string]*serviceHandle
+	queue             workqueue.RateLimitingInterface
+	factory           informers.SharedInformerFactory
+	serviceInformer   informers_core_v1.ServiceInformer
+	endpointInformer  informers_core_v1.EndpointsInformer
+	configmapInformer informers_core_v1.ConfigMapInformer
+	nodeInformer      informers_core_v1.NodeInformer
+	svcHandles        map[string]*serviceHandle
 }
 
 type queueKey struct {
@@ -68,6 +70,8 @@ func getObjectType(obj interface{}) string {
 		return InformerTypeService
 	case *api_core_v1.Endpoints:
 		return InformerTypeEndpoints
+	case *api_core_v1.ConfigMap:
+		return InformerTypeConfigMap
 	case *api_core_v1.Node:
 		return InformerTypeNode
 	default:
@@ -80,6 +84,8 @@ func checkObjectValidity(obj interface{}) bool {
 	case *api_core_v1.Node:
 		return true
 	case *api_core_v1.Service:
+		return true
+	case *api_core_v1.ConfigMap:
 		return true
 	case *api_core_v1.Endpoints:
 		// filter out invalid endpoint without IP
@@ -149,11 +155,12 @@ func NewApiserverClient(clientSet kubernetes.Interface) (*ApiserverClient, error
 		&workqueue.BucketRateLimiter{Limiter: rate.NewLimiter(rate.Limit(LimiterQps), LimiterBurst)},
 	)
 	c := &ApiserverClient{
-		factory:          factory,
-		serviceInformer:  factory.Core().V1().Services(),
-		endpointInformer: factory.Core().V1().Endpoints(),
-		nodeInformer:     factory.Core().V1().Nodes(),
-		queue:            workqueue.NewNamedRateLimitingQueue(rateLimiter, "ApiserverClient"),
+		factory:           factory,
+		serviceInformer:   factory.Core().V1().Services(),
+		endpointInformer:  factory.Core().V1().Endpoints(),
+		configmapInformer: factory.Core().V1().ConfigMaps(),
+		nodeInformer:      factory.Core().V1().Nodes(),
+		queue:             workqueue.NewNamedRateLimitingQueue(rateLimiter, "ApiserverClient"),
 	}
 
 	handler := cache.ResourceEventHandlerFuncs{
@@ -161,8 +168,21 @@ func NewApiserverClient(clientSet kubernetes.Interface) (*ApiserverClient, error
 		UpdateFunc: c.enqueueForUpdate,
 		DeleteFunc: c.enqueueForDelete,
 	}
+
+	configFilterFunc := func(obj interface{}) bool {
+		cm, ok := obj.(*api_core_v1.ConfigMap)
+		if ok && cm.ObjectMeta.Name == "lbconfig" {
+			return true
+		}
+		return false
+	}
+	filterHandler := cache.FilteringResourceEventHandler{
+		FilterFunc: configFilterFunc,
+		Handler:    handler,
+	}
 	c.serviceInformer.Informer().AddEventHandler(handler)
 	c.endpointInformer.Informer().AddEventHandler(handler)
+	c.configmapInformer.Informer().AddEventHandler(filterHandler)
 	c.nodeInformer.Informer().AddEventHandler(handler)
 
 	c.svcHandles = make(map[string]*serviceHandle)
@@ -182,6 +202,22 @@ func (c *ApiserverClient) syncHandler(qkey queueKey) error {
 		}
 		nodeHdl.extractNodeCache(cache_v1.CacheFlagDelete, qkey.oldObj)
 		nodeHdl.extractNodeCache(cache_v1.CacheFlagUpdate, newObj)
+		return nil
+	}
+
+	if qkey.typ == InformerTypeConfigMap {
+		cmHandler := newConfigMapHandler()
+		newObj, _, err = c.configmapInformer.Informer().GetIndexer().GetByKey(qkey.name)
+		if err != nil {
+			return fmt.Errorf("get object with key %#v from store failed with %v", qkey, err)
+		}
+		if qkey.opt == InformerOptAdd || qkey.opt == InformerOptUpdate {
+			cmHandler.configmap = newConfigMapEvent(newObj, cache_v1.CacheFlagUpdate)
+		} else if qkey.opt == InformerOptDelete {
+			cmHandler.configmap = newConfigMapEvent(newObj, cache_v1.CacheFlagDelete)
+		}
+
+		cmHandler.process()
 		return nil
 	}
 
@@ -290,6 +326,9 @@ func (c *ApiserverClient) Run(stopCh <-chan struct{}) error {
 		return fmt.Errorf("kube wait for service caches to sync failed")
 	}
 	if ok := cache.WaitForCacheSync(stopCh, c.endpointInformer.Informer().HasSynced); !ok {
+		return fmt.Errorf("kube wait for endpoint caches to sync failed")
+	}
+	if ok := cache.WaitForCacheSync(stopCh, c.configmapInformer.Informer().HasSynced); !ok {
 		return fmt.Errorf("kube wait for endpoint caches to sync failed")
 	}
 	if ok := cache.WaitForCacheSync(stopCh, c.nodeInformer.Informer().HasSynced); !ok {
