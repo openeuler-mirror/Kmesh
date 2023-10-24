@@ -15,7 +15,6 @@
 package kubernetes
 
 import (
-	"net"
 	"os"
 	"sort"
 	"strconv"
@@ -60,16 +59,8 @@ func extractEndpointCache(epcache cache_v1.EndpointCache,
 			epkv.Value.Port = nets.ConvertPortToBigEndian(uint32(epPort.Port))
 			for k, epAddr := range sub.Addresses {
 				epkv.Value.IPv4 = nets.ConvertIpToUint32(epAddr.IP)
-				if epAddr.NodeName != nil {
-					if epAddr.NodeName != nil {
-						if *(epAddr.NodeName) == nodename {
-							epkv.Value.Is_local = uint8(1)
-						}
-					} else {
-						if isLocalIP(epAddr.IP) {
-							epkv.Value.Is_local = uint8(1)
-						}
-					}
+				if epAddr.NodeName != nil && *(epAddr.NodeName) == nodename {
+					epkv.Value.Is_local = uint8(1)
 				}
 				epkv.Key = hashName.StrToNum(epPort.Name +
 					strconv.FormatUint(uint64(epkv.Value.IPv4), ConverNumBase) +
@@ -83,24 +74,6 @@ func extractEndpointCache(epcache cache_v1.EndpointCache,
 			}
 		}
 	}
-}
-
-func isLocalIP(endpointIP string) bool {
-	addrList, err := net.InterfaceAddrs()
-	if err != nil {
-		log.Errorln("get hostIP error!")
-		return false
-	}
-	for _, address := range addrList {
-		if ipNet, ok := address.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
-			if ipNet.IP.To4() != nil {
-				if ipNet.IP.String() == endpointIP {
-					return true
-				}
-			}
-		}
-	}
-	return false
 }
 
 func extractBackendCache(beCache cache_v1.BackendCache, svcNameID uint32, endpointNum *uint32,
