@@ -8,7 +8,7 @@
  * IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
  * PURPOSE.
  * See the Mulan PSL v2 for more details.
- * Author: bitcoffee
+ * Author: dongdong9
  * Create: 2023-07-21
  */
 #ifndef _LBCONFIG_MAP_H_
