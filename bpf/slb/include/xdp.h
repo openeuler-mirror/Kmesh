@@ -129,9 +129,19 @@ static inline bool is_port_used(tuple_t *tuple)
 static inline __u32 get_local_port(tuple_t *tuple)
 {
 	__u32 current_time;
-	__le32 usable_port = bpf_get_prandom_u32() % 60000 + 2000;
+	lbconfig_key_t key = 0;
+	struct lbconfig_entry_t *lbCfg = map_lookup_lbconfig(&key);
+	__le32 usable_port;
+	__u16 remaining;
+	if (lbCfg) {
+		remaining = lbCfg->snat_port_max - lbCfg->snat_port_min + 1;
+		usable_port = lbCfg->snat_port_min + bpf_get_prandom_u32() % remaining;
+	}else{
+		usable_port = bpf_get_prandom_u32() % 60000 + 2000;
+	}
+	
 #pragma unroll
-	for (int i = 0; i < 32; i++, usable_port++) {
+	for (int i = 0; i < 32; i++) {
 		tuple->dst_port = bpf_htons(usable_port);
 		if (is_port_used(tuple)) {
 			continue;
@@ -143,11 +153,29 @@ static inline __u32 get_local_port(tuple_t *tuple)
 	return 0;
 success:
 	return bpf_htons(usable_port);
+// 	__u32 current_time;
+// 	__le32 usable_port = bpf_get_prandom_u32() % 60000 + 2000;
+// #pragma unroll
+// 	for (int i = 0; i < 32; i++, usable_port++) {
+// 		tuple->dst_port = bpf_htons(usable_port);
+// 		if (is_port_used(tuple)) {
+// 			continue;
+// 		}
+// 		__u32 current_time = bpf_ktime_get_ns() / 1000000000;
+// 		if (!map_update_usedport(tuple, &current_time))
+// 			goto success;
+// 	}
+// 	return 0;
+// success:
+// 	return bpf_htons(usable_port);
 }
 
-static inline bool is_local()
+static inline bool is_local(struct endpoint_entry_t *endpoint)
 {
-	return true;
+	if (endpoint->is_local) {
+		return true;
+	}
+	return false;
 }
 
 static inline int xdp_process_nat(struct xdp_md *xdp_ctx,
@@ -178,7 +206,7 @@ static inline int xdp_process_nat(struct xdp_md *xdp_ctx,
 
 	ct_value.nat_info.nat_mac_info.nat_ifindex = xdp_ctx->ingress_ifindex;
 
-	if (is_local()) {
+	if (is_local(endpoint)) {
 		add_dnat_ct(header_info, &ct_value, tuple, &tuple_rev);
 		return XDP_PASS;
 	}

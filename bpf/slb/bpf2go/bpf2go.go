@@ -18,3 +18,4 @@ package bpf2go
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang --cflags $EXTRA_CFLAGS --cflags $EXTRA_CDEFINE CgroupSock ../cgroup_sock.c -- -I../include -I../../../include -DCGROUP_SOCK_CTX
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang --cflags $EXTRA_CFLAGS --cflags $EXTRA_CDEFINE XdpLoadBalance ../xdp_load_balance.c -- -I../include -I../../../include -DXDP_CTX
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang --cflags $EXTRA_CFLAGS --cflags $EXTRA_CDEFINE RevTC ../tc.c -- -I../include -I../../../include  -DTC_CTX
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang --cflags $EXTRA_CFLAGS --cflags $EXTRA_CDEFINE CgroupCheckPort ../check_port.c -- -I../include -I../../../include

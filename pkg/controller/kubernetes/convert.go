@@ -15,6 +15,7 @@
 package kubernetes
 
 import (
+	"os"
 	"sort"
 	"strconv"
 
@@ -44,7 +45,10 @@ func extractEndpointCache(epcache cache_v1.EndpointCache,
 	if ep == nil {
 		return
 	}
-
+	nodename, err := os.Hostname()
+	if err != nil {
+		log.Errorln("get hostname error!")
+	}
 	for i, sub := range ep.Subsets {
 		for j, epPort := range sub.Ports {
 			if !nets.GetConfig().IsEnabledProtocol(string(epPort.Protocol)) {
@@ -55,6 +59,9 @@ func extractEndpointCache(epcache cache_v1.EndpointCache,
 			epkv.Value.Port = nets.ConvertPortToBigEndian(uint32(epPort.Port))
 			for k, epAddr := range sub.Addresses {
 				epkv.Value.IPv4 = nets.ConvertIpToUint32(epAddr.IP)
+				if epAddr.NodeName != nil && *(epAddr.NodeName) == nodename {
+					epkv.Value.Is_local = uint8(1)
+				}
 				epkv.Key = hashName.StrToNum(epPort.Name +
 					strconv.FormatUint(uint64(epkv.Value.IPv4), ConverNumBase) +
 					strconv.FormatUint(uint64(epkv.Value.Port), ConverNumBase))
@@ -212,4 +219,25 @@ func updateServiceEndpointNum(svcache cache_v1.ServiceCache, endpointNum uint32,
 		kv.Key = k
 		svcache[kv] |= cache_v1.CacheFlagUpdate
 	}
+}
+
+func updateLbconfig(lbcache cache_v1.LbconfigCache, cme *configMapEvent) {
+	var kv cache_v1.LbconfigKeyAndValue
+	kv.Key.HostAddress = nets.ConvertIpToUint32("0.0.0.0")
+
+	minPort := cme.obj.Data["snatPortMin"]
+	min, err := strconv.Atoi(minPort)
+	if err != nil {
+		return
+	}
+	maxPort := cme.obj.Data["snatPortMax"]
+	max, err := strconv.Atoi(maxPort)
+	if err != nil {
+		return
+	}
+	kv.Value.HostAddress = nets.ConvertIpToUint32("0.0.0.0")
+	kv.Value.SnatPortMin = nets.ConvertPortToBigEndian(uint32(min))
+	kv.Value.SnatPortMax = nets.ConvertPortToBigEndian(uint32(max))
+
+	lbcache[kv] = cme.opt
 }

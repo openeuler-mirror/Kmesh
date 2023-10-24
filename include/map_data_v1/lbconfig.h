@@ -8,12 +8,19 @@
  * IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
  * PURPOSE.
  * See the Mulan PSL v2 for more details.
- * Author: bitcoffee
+ * Author: dongdong9
  * Create: 2023-05-12
  */
-#include "map/service_map.h"
-#include "map/backend_map.h"
-#include "map/endpoint_map.h"
-#include "map/conntrack_map.h"
-#include "map/usedport_map.h"
-#include "map/lbconfig_map.h"
+#ifndef _LBCONFIG_H_
+#define _LBCONFIG_H_
+
+#include <linux/types.h>
+
+typedef __u32 lbconfig_key_t;
+struct lbconfig_entry_t {
+    __u32 host_address; //nodeIp, 用于snat ip
+    __u32 snat_port_min;
+    __u32 snat_port_max;
+}__attribute__((packed));
+
+#endif
