@@ -108,3 +108,46 @@ chain --ip 192.168.1.0/24 --uid-owner 1337 --j ACCEPT
 chain --port 15006 -j RETURN
 ```
 
+### 使用步骤
+
+#### 前置条件：
+
+1. 当前环境上至少挂载了一处cgroupv2，若没有挂载，参考以下步骤挂载
+
+```shell
+mkdir /mnt/cgroup2
+mount none /mnt/cgroup2 -t cgroup2
+```
+
+2. 安装Kmesh软件包
+
+```shell
+yum install Kmesh
+```
+
+#### 使能mda：
+1、命令说明
+```shell
+[root@localhost Kmesh]# mdacore
+Usage: mdacore {COMMAND}
+       COMMAND: enable      enable serviceMesh accelerating
+                disable     disable serviceMesh accelerating
+                query       check program state
+```
+
+2、配置oncn-mda.conf文件，默认为空，代表加速本机环境上的所有代理，也可以根据配置示例中按需配置ip/port/uid/gid
+
+3、执行以下命令使能mda
+
+```shell
+[root@localhost Kmesh]mdacore enable
+enable serviceMesh accelerating success!
+```
+
+4、查询mda加速是否生效
+
+```shell
+[root@localhost Kmesh]mdacore query
+serviceMesh accelerating is enabled!
+```
+
